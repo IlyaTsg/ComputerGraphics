@@ -76,6 +76,7 @@ Widget::~Widget()
 
 void Widget::draw()
 {
+    scene->clear();
     x1 = inx1->toPlainText().toInt();
     y1 = iny1->toPlainText().toInt();
     x2 = inx2->toPlainText().toInt();
@@ -119,7 +120,6 @@ void Widget::mirror()
 {
     // Находим угол между прямой и осью X
     double phi = atan((double)(abs(y1-y2))/(double)abs(x2-x1));
-    qDebug() << phi;
 
     if(x1<x2){ // Первая точка левее
         if(y1<y2){ // Возрастает
@@ -131,37 +131,35 @@ void Widget::mirror()
             phi = M_PI-phi; // Находим смежный угол
         }
     }
-    qDebug() << phi;
 
-    // Находим матрицу поворота
-    double rotate_matrix[2][2]= {{cos(phi), sin(phi)}, {-sin(phi), cos(phi)}};
-    // Находим матрицу обратного поворота
-    double reverse_rotate_matrix[2][2] = {{cos(-phi), sin(-phi)}, {-sin(-phi), cos(-phi)}};
+    // Матрица координат центра
+    double center[3] = {(double)cx, (double)cy, 1};
+    // Матрица перемещения начала координат
+    double moving_coord[3][3] = {{1, 0, 0}, {0, 1, 0}, {(double)-x1, (double)-y1, 1}};
+    // Матрица поворота
+    double rotate_matrix[3][3]= {{cos(phi), sin(phi), 0}, {-sin(phi), cos(phi), 0}, {0, 0, 1}};
+    // Матрица обратного перемещения начала координат
+    double reverse_moving_coord[3][3] = {{1, 0, 0}, {0, 1, 0}, {(double)x1, (double)y1, 1}};
+    // Матрица обратного поворота
+    double reverse_rotate_matrix[3][3]= {{cos(phi), -sin(phi), 0}, {sin(phi), cos(phi), 0}, {0, 0, 1}};
 
-    double center[2] = {(double)cx, (double)cy}; // Координаты центра
+    // Новые координты центра с учетом перемещения начала координат
+    double moved_center[3] = {center[0]-x1, center[1]-y1, 1};
 
-    // Поворот центра умножением на матрицу поворота
-    double rotate_center[2] = {center[0]*rotate_matrix[0][0]+center[1]*rotate_matrix[1][0],center[0]*rotate_matrix[0][1]+center[1]*rotate_matrix[1][1]};
-    double xr = rotate_center[0] - radius;
-    double yr = -rotate_center[1] - radius;
+    // Поворот центра относительно нового начала координат
+    double rotated_center[3] = {moved_center[0]*cos(phi)-moved_center[1]*sin(phi), moved_center[0]*sin(phi)+moved_center[1]*cos(phi), 1};
+
+    // Отображаем относительно оси X
+    double reverse_center[3] = {rotated_center[0], -rotated_center[1], 1};
+
+    // Обратный поворот
+    double reverse_rotated_center[3] = {reverse_center[0]*cos(phi)+reverse_center[1]*sin(phi), -reverse_center[0]*sin(phi)+reverse_center[1]*cos(phi), 1};
+
+    // Обратное перемещение начала координат
+    double reverse_moved_center[3] = {reverse_rotated_center[0]+x1, reverse_rotated_center[1]+y1, 1};
+
+    double xr = reverse_moved_center[0] - radius;
+    double yr = -reverse_moved_center[1] - radius;
     double height = 2*radius;
-    scene->addEllipse(xr, yr, height, height, QPen(Qt::red, 1, Qt::PenStyle::DashLine));
-
-    // Отображение центра умножением на матрицу отображения относительно оси X
-    double reverse_center[2] = {rotate_center[0], -rotate_center[1]};
-    xr = reverse_center[0] - radius;
-    yr = -reverse_center[1] - radius;
-    height = 2*radius;
-    scene->addEllipse(xr, yr, height, height, QPen(Qt::green, 1, Qt::PenStyle::DashLine));
-
-    // Обратный поворот множением на матрицу обратного поворота
-    double reverse_rotate_center[2] = {reverse_center[0]*reverse_rotate_matrix[0][0]+reverse_center[1]*reverse_rotate_matrix[1][0], reverse_center[0]*reverse_rotate_matrix[0][1]+reverse_center[1]*reverse_rotate_matrix[1][1]};
-    qDebug() << "X:" << reverse_rotate_center[0] << "Y:" << reverse_rotate_center[1];
-    xr = reverse_rotate_center[0] - radius;
-    yr = -reverse_rotate_center[1] - radius;
-    height = 2*radius;
     scene->addEllipse(xr, yr, height, height, QPen(Qt::blue, 1, Qt::PenStyle::DashLine));
-    scene->addLine(-100,100,100,-100, QPen(Qt::red));
 }
-
-
